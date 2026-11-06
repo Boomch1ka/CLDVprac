@@ -13,3 +13,7 @@ TestResults/
 publish/
 
 appsettings.Production.json
+
+*.docx
+Section_B_Theory_and_Submission_Guide.md
+screenshots/
