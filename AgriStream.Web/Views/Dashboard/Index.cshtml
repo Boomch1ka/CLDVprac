@@ -66,7 +66,9 @@
             }
             else
             {
-                <canvas id="moistureChart" height="260"></canvas>
+                <div style="position:relative;height:250px;width:100%">
+                    <canvas id="moistureChart"></canvas>
+                </div>
             }
         </div></div>
     </div>
@@ -79,7 +81,9 @@
             }
             else
             {
-                <canvas id="trendChart" height="260"></canvas>
+                <div style="position:relative;height:250px;width:100%">
+                    <canvas id="trendChart"></canvas>
+                </div>
             }
         </div></div>
     </div>
@@ -147,47 +151,135 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script>
-        Chart.defaults.font.family = 'Nunito, sans-serif';
-        Chart.defaults.font.weight = 700;
-        Chart.defaults.color = '#6b7280';
-
         const latest = @Json.Serialize(latest.Select(r => new { r.DeviceId, r.SoilMoisture }));
-        const moistureEl = document.getElementById('moistureChart');
-        if (moistureEl) {
-            const colours = latest.map(r => r.soilMoisture < 25 ? '#fb7185' : r.soilMoisture > 65 ? '#818cf8' : '#4ade80');
-            new Chart(moistureEl, {
-                type: 'bar',
-                data: {
-                    labels: latest.map(r => r.deviceId),
-                    datasets: [{ label: 'Soil moisture %', data: latest.map(r => r.soilMoisture), backgroundColor: colours, borderRadius: 12, borderSkipped: false }]
-                },
-                options: {
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
+        const trendLabels = @Json.Serialize(Model.TrendLabels);
+        const trendMoisture = @Json.Serialize(Model.TrendMoisture);
+        const trendTemp = @Json.Serialize(Model.TrendTemperature);
+        const trendHumidity = @Json.Serialize(Model.TrendHumidity);
+
+        function drawBarChart(canvasId, items) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || !items.length) return;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            const w = rect.width, h = rect.height;
+            const padL = 38, padR = 14, padT = 18, padB = 34;
+            const plotW = w - padL - padR, plotH = h - padT - padB;
+
+            ctx.font = '12px Segoe UI, sans-serif';
+            ctx.fillStyle = '#666';
+            ctx.strokeStyle = '#e5e7eb';
+            for (let v = 0; v <= 100; v += 25) {
+                const y = padT + plotH - (v / 100) * plotH;
+                ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+                ctx.fillText(v + '%', 4, y + 4);
+            }
+
+            const slot = plotW / items.length;
+            const barW = Math.min(44, slot * 0.6);
+            items.forEach((it, i) => {
+                const val = Math.max(0, Math.min(100, it.soilMoisture));
+                const bh = (val / 100) * plotH;
+                const x = padL + i * slot + (slot - barW) / 2;
+                const y = padT + plotH - bh;
+                ctx.fillStyle = val < 25 ? '#e53935' : val > 65 ? '#1e88e5' : '#2e7d32';
+                ctx.fillRect(x, y, barW, bh);
+                ctx.fillStyle = '#222';
+                ctx.font = 'bold 11px Segoe UI, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(val.toFixed(0) + '%', x + barW / 2, y - 5);
+                ctx.fillStyle = '#555';
+                ctx.font = '11px Segoe UI, sans-serif';
+                ctx.fillText(it.deviceId.replace('SENSOR-', 'S-'), x + barW / 2, h - 10);
+            });
+        }
+
+        function drawLineChart(canvasId, labels, s1, s2, s3) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || !labels.length) return;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            const w = rect.width, h = rect.height;
+            const padL = 36, padR = 16, padT = 26, padB = 34;
+            const plotW = w - padL - padR, plotH = h - padT - padB;
+
+            ctx.font = '12px Segoe UI, sans-serif';
+            ctx.fillStyle = '#666';
+            ctx.strokeStyle = '#e5e7eb';
+            for (let v = 0; v <= 100; v += 25) {
+                const y = padT + plotH - (v / 100) * plotH;
+                ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+                ctx.fillText(v, 6, y + 4);
+            }
+
+            const series = [
+                { name: 'Moisture %', data: s1, color: '#2e7d32' },
+                { name: 'Air °C', data: s2, color: '#f57f17' },
+                { name: 'Humidity %', data: s3, color: '#0288d1' }
+            ];
+
+            // Legend
+            let lx = padL;
+            series.forEach(sr => {
+                ctx.fillStyle = sr.color;
+                ctx.fillRect(lx, 6, 12, 12);
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 12px Segoe UI, sans-serif';
+                ctx.fillText(sr.name, lx + 16, 16);
+                lx += ctx.measureText(sr.name).width + 36;
+            });
+
+            const stepX = labels.length > 1 ? plotW / (labels.length - 1) : plotW;
+            series.forEach(sr => {
+                ctx.strokeStyle = sr.color;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                sr.data.forEach((v, i) => {
+                    const x = padL + (labels.length > 1 ? i * stepX : plotW / 2);
+                    const y = padT + plotH - (Math.max(0, Math.min(100, v)) / 100) * plotH;
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+                sr.data.forEach((v, i) => {
+                    const x = padL + (labels.length > 1 ? i * stepX : plotW / 2);
+                    const y = padT + plotH - (Math.max(0, Math.min(100, v)) / 100) * plotH;
+                    ctx.fillStyle = sr.color;
+                    ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI * 2); ctx.fill();
+                });
+            });
+
+            ctx.fillStyle = '#555';
+            ctx.font = '11px Segoe UI, sans-serif';
+            ctx.textAlign = 'center';
+            const stride = Math.max(1, Math.ceil(labels.length / 8));
+            labels.forEach((lb, i) => {
+                if (i % stride === 0 || i === labels.length - 1) {
+                    const x = padL + (labels.length > 1 ? i * stepX : plotW / 2);
+                    ctx.fillText(lb, x, h - 10);
                 }
             });
         }
 
-        const trendEl = document.getElementById('trendChart');
-        if (trendEl) {
-            new Chart(trendEl, {
-                type: 'line',
-                data: {
-                    labels: @Json.Serialize(Model.TrendLabels),
-                    datasets: [
-                        { label: 'Moisture %', data: @Json.Serialize(Model.TrendMoisture), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,.15)', fill: true, tension: .4, borderWidth: 3, pointRadius: 3 },
-                        { label: 'Air °C', data: @Json.Serialize(Model.TrendTemperature), borderColor: '#f59e0b', tension: .4, borderWidth: 3, pointRadius: 3 },
-                        { label: 'Humidity %', data: @Json.Serialize(Model.TrendHumidity), borderColor: '#38bdf8', tension: .4, borderWidth: 3, pointRadius: 3, borderDash: [6, 4] }
-                    ]
-                },
-                options: {
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: { legend: { labels: { usePointStyle: true } } },
-                    scales: { y: { grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
-                }
-            });
-        }
+        drawBarChart('moistureChart', latest);
+        drawLineChart('trendChart', trendLabels, trendMoisture, trendTemp, trendHumidity);
+        window.addEventListener('resize', () => {
+            drawBarChart('moistureChart', latest);
+            drawLineChart('trendChart', trendLabels, trendMoisture, trendTemp, trendHumidity);
+        });
     </script>
 }

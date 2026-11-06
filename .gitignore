@@ -10,3 +10,6 @@ __blobstorage__/
 __queuestorage__/
 TestResults/
 *.publishsettings
+publish/
+
+appsettings.Production.json
