@@ -1,0 +1,95 @@
+@model DroneIndexViewModel
+@{
+    ViewData["Title"] = "Drone Images";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Drone Images 🚁</h1>
+        <p>Aerial photos are stored in Azure Blob Storage, and the Blob function logs every upload.</p>
+    </div>
+    <span class="source-chip"><span class="dot"></span> @Model.Images.Count image(s)</span>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <div class="alert alert-warning border-0 rounded-4 fw-semibold"><i class="bi bi-info-circle"></i> @Model.Error</div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card-fun top-sky position-sticky" style="top:90px">
+            <div class="card-body">
+                <h5 class="mb-3">📤 Upload new photos</h5>
+                <form asp-action="Upload" method="post" enctype="multipart/form-data">
+                    <label class="drop-zone d-block mb-3" id="dropZone" for="files">
+                        <span class="emoji">🛸</span>
+                        <div class="fw-bold">Drop images here or click to browse</div>
+                        <div class="small text-muted">JPG, PNG, WEBP or TIFF · up to 20 MB · max 10 at a time</div>
+                        <input type="file" name="files" id="files" accept="image/*,.tif,.tiff" multiple class="d-none" />
+                        <div class="preview-strip justify-content-center" id="preview"></div>
+                    </label>
+                    <div class="mb-3">
+                        <label class="form-label" for="fieldName">Field</label>
+                        <input class="form-control" id="fieldName" name="fieldName" placeholder="e.g. North Field" required maxlength="100" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="notes">Notes <span class="text-muted fw-semibold">(optional)</span></label>
+                        <input class="form-control" id="notes" name="notes" placeholder="e.g. Yellow patches near the dam" maxlength="200" />
+                    </div>
+                    <button type="submit" class="btn btn-sky btn-pill w-100" data-loading="Uploading..."><i class="bi bi-cloud-arrow-up"></i> Upload to Blob Storage</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        @if (Model.Images.Count == 0)
+        {
+            <div class="card-fun"><div class="empty-state"><span class="emoji">🖼️</span>No drone photos yet. Upload your first one!</div></div>
+        }
+        <div class="row g-3">
+            @foreach (var img in Model.Images)
+            {
+                <div class="col-sm-6 col-xl-4">
+                    <div class="card-fun hover-lift gallery-card h-100">
+                        <a href="@img.Url" target="_blank" rel="noopener"><img src="@img.Url" alt="@img.Name" loading="lazy" /></a>
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="chip"><i class="bi bi-geo-alt"></i> @img.FieldName</span>
+                                <span class="small text-muted fw-bold">@img.SizeBytes.FileSize()</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(img.Notes))
+                            {
+                                <div class="small fw-semibold mb-1">"@img.Notes"</div>
+                            }
+                            <div class="small text-muted fw-semibold"><i class="bi bi-person"></i> @img.UploadedBy · @img.UploadedAt.TimeAgo()</div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const input = document.getElementById('files');
+        const zone = document.getElementById('dropZone');
+        const preview = document.getElementById('preview');
+
+        function showPreview(files) {
+            preview.innerHTML = '';
+            Array.from(files).slice(0, 10).forEach(f => {
+                if (!f.type.startsWith('image/')) return;
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(f);
+                preview.appendChild(img);
+            });
+        }
+        input.addEventListener('change', () => showPreview(input.files));
+        ['dragenter', 'dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('dragover'); }));
+        ['dragleave', 'drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('dragover'); }));
+        zone.addEventListener('drop', e => { input.files = e.dataTransfer.files; showPreview(input.files); });
+    </script>
+}

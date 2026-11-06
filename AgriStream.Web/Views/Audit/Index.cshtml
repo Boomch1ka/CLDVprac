@@ -1,0 +1,94 @@
+@model AuditViewModel
+@{
+    ViewData["Title"] = "Audit Logs";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Audit Logs 📒</h1>
+        <p>Rows written to Azure Table Storage by the Blob and Queue functions.</p>
+    </div>
+    <a class="btn btn-soft btn-pill" asp-action="Index"><i class="bi bi-arrow-clockwise"></i> Refresh</a>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <div class="alert alert-warning border-0 rounded-4 fw-semibold"><i class="bi bi-info-circle"></i> @Model.Error</div>
+}
+
+<ul class="nav nav-pills nav-pills-fun mb-3" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#uploads" type="button" role="tab">
+            🚁 Drone uploads <span class="badge rounded-pill text-bg-light ms-1">@Model.Uploads.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#irrigation" type="button" role="tab">
+            💧 Irrigation events <span class="badge rounded-pill text-bg-light ms-1">@Model.Irrigations.Count</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="uploads" role="tabpanel">
+        <div class="card-fun top-sky">
+            <div class="table-responsive">
+                <table class="table table-fun">
+                    <thead>
+                        <tr><th>File</th><th>Field</th><th>Uploaded by</th><th>Size</th><th>Type</th><th>Status</th><th>Processed</th></tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Uploads.Count == 0)
+                        {
+                            <tr><td colspan="7" class="text-center text-muted py-4">No uploads logged yet. Upload a drone photo and the Blob function will add it here.</td></tr>
+                        }
+                        @foreach (var u in Model.Uploads)
+                        {
+                            <tr>
+                                <td class="text-break" style="max-width:260px"><i class="bi bi-image text-info"></i> @u.BlobName</td>
+                                <td>@u.FieldName</td>
+                                <td>@u.UploadedBy</td>
+                                <td>@u.SizeBytes.FileSize()</td>
+                                <td class="small text-muted">@u.ContentType</td>
+                                <td>
+                                    <span class="status-pill @(u.Status == "Processed" ? "status-online" : "status-maintenance")" title="@u.Message">@u.Status</span>
+                                </td>
+                                <td class="text-muted">@u.ProcessedAt.TimeAgo()</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="irrigation" role="tabpanel">
+        <div class="card-fun top-leaf">
+            <div class="table-responsive">
+                <table class="table table-fun">
+                    <thead>
+                        <tr><th>Sensor</th><th>Duration</th><th>Requested by</th><th>Result</th><th>Requested</th><th>Processed</th><th>Command ID</th></tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Irrigations.Count == 0)
+                        {
+                            <tr><td colspan="7" class="text-center text-muted py-4">No irrigation events yet. Trigger one from the Sensors page.</td></tr>
+                        }
+                        @foreach (var e in Model.Irrigations)
+                        {
+                            <tr>
+                                <td class="fw-bold">@e.DeviceId</td>
+                                <td>@e.DurationMinutes min</td>
+                                <td>@e.RequestedBy</td>
+                                <td><span class="status-pill @(e.Result == "Completed" ? "status-online" : "status-maintenance")">@e.Result</span></td>
+                                <td class="text-muted">@e.RequestedAt.TimeAgo()</td>
+                                <td class="text-muted">@e.ProcessedAt.TimeAgo()</td>
+                                <td class="small text-muted"><code>@e.CommandId</code></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

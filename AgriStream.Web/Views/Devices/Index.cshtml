@@ -1,0 +1,139 @@
+@model DevicesViewModel
+@{
+    ViewData["Title"] = "Sensors";
+    var isAdmin = User.IsInRole(AppRoles.Admin);
+    var showAdd = ViewData["ShowAddDevice"] is true;
+    var icons = new[] { "🌽", "🌻", "🍊", "🌾", "🥬", "🍇", "🍅", "🥕" };
+}
+
+<div class="page-header">
+    <div>
+        <h1>Sensors & Irrigation 💧</h1>
+        <p>Sensor registry from Azure SQL. Watering requests go through the irrigation pipeline.</p>
+    </div>
+    @if (isAdmin)
+    {
+        <button class="btn btn-leaf btn-pill" type="button" data-bs-toggle="collapse" data-bs-target="#addDevice">
+            <i class="bi bi-plus-lg"></i> Add sensor
+        </button>
+    }
+</div>
+
+@if (!Model.IrrigationConfigured)
+{
+    <div class="alert alert-warning border-0 rounded-4 fw-semibold">
+        <i class="bi bi-plug"></i> <code>Functions:TriggerIrrigationUrl</code> isn't configured, so irrigation buttons won't work yet.
+    </div>
+}
+
+@if (isAdmin)
+{
+    <div class="collapse @(showAdd ? "show" : "") mb-4" id="addDevice">
+        <div class="card-fun top-leaf"><div class="card-body">
+            <h5 class="mb-3">🌱 Register a new sensor</h5>
+            <form asp-action="Create" method="post" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label asp-for="NewDevice.DeviceId" class="form-label"></label>
+                    <input asp-for="NewDevice.DeviceId" class="form-control" placeholder="SENSOR-007" />
+                    <span asp-validation-for="NewDevice.DeviceId" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="NewDevice.Name" class="form-label"></label>
+                    <input asp-for="NewDevice.Name" class="form-control" placeholder="Pumpkin Patch Probe" />
+                    <span asp-validation-for="NewDevice.Name" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="NewDevice.FieldName" class="form-label"></label>
+                    <input asp-for="NewDevice.FieldName" class="form-control" placeholder="South Field" />
+                    <span asp-validation-for="NewDevice.FieldName" class="field-validation-error"></span>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-leaf btn-pill w-100">Save</button>
+                </div>
+            </form>
+        </div></div>
+    </div>
+}
+
+@if (Model.Devices.Count == 0)
+{
+    <div class="card-fun"><div class="empty-state"><span class="emoji">📡</span>No sensors registered yet.</div></div>
+}
+
+<div class="row g-4">
+    @for (var i = 0; i < Model.Devices.Count; i++)
+    {
+        var d = Model.Devices[i];
+        var status = d.DisplayStatus;
+        <div class="col-md-6 col-xl-4">
+            <div class="card-fun hover-lift device-card h-100">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="icon-bubble bubble-@(new[] { "leaf", "sky", "sun", "berry", "grape", "coral" }[i % 6])">
+                                <span class="device-icon">@icons[i % icons.Length]</span>
+                            </div>
+                            <div>
+                                <h5 class="mb-0">@d.Name</h5>
+                                <div class="device-meta">@d.DeviceId · @d.FieldName</div>
+                            </div>
+                        </div>
+                        <span class="status-pill @DisplayHelpers.StatusCss(status)" data-status-for="@d.DeviceId">@status</span>
+                    </div>
+
+                    <div class="device-meta mb-3">
+                        <div><i class="bi bi-clock-history"></i> Last watered: <span data-last-for="@d.DeviceId">@d.LastIrrigatedAt.TimeAgo()</span></div>
+                        <div><i class="bi bi-person"></i> Last command by: <span data-by-for="@d.DeviceId">@(d.LastCommandBy ?? "-")</span></div>
+                    </div>
+
+                    <form asp-action="Irrigate" method="post" class="mt-auto d-flex gap-2">
+                        <input type="hidden" name="deviceId" value="@d.DeviceId" />
+                        <select name="durationMinutes" class="form-select" style="max-width:120px" aria-label="Duration">
+                            <option value="5">5 min</option>
+                            <option value="10" selected>10 min</option>
+                            <option value="15">15 min</option>
+                            <option value="30">30 min</option>
+                            <option value="60">60 min</option>
+                        </select>
+                        <button type="submit" class="btn btn-sky btn-pill flex-fill" data-loading="Sending..."
+                                disabled="@(status == "Maintenance" || status == "Offline")">
+                            💧 Trigger Irrigation
+                        </button>
+                    </form>
+
+                    @if (isAdmin)
+                    {
+                        <form asp-action="Delete" asp-route-id="@d.Id" method="post" class="mt-2 text-end">
+                            <button type="submit" class="btn btn-link btn-sm text-danger fw-bold p-0" data-confirm="Remove @d.DeviceId from the registry?">
+                                <i class="bi bi-trash"></i> Remove
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Poll the registry so the status changes when the Queue-triggered function updates Azure SQL.
+        async function refreshStatus() {
+            try {
+                const res = await fetch('@Url.Action("Status")', { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) return;
+                const devices = await res.json();
+                devices.forEach(d => {
+                    const pill = document.querySelector(`[data-status-for="${d.deviceId}"]`);
+                    if (pill) { pill.textContent = d.status; pill.className = 'status-pill ' + d.css; }
+                    const last = document.querySelector(`[data-last-for="${d.deviceId}"]`);
+                    if (last) last.textContent = d.lastIrrigated;
+                    const by = document.querySelector(`[data-by-for="${d.deviceId}"]`);
+                    if (by) by.textContent = d.lastCommandBy;
+                });
+            } catch { /* ignore */ }
+        }
+        setInterval(refreshStatus, 5000);
+    </script>
+}

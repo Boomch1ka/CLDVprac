@@ -1,0 +1,16 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Oops";
+}
+<div class="card-fun auth-wrap text-center">
+    <div class="card-body p-5">
+        <div style="font-size:3.5rem">🐛</div>
+        <h2>Oops, a bug got into the crops</h2>
+        <p class="text-muted">Something went wrong while handling your request. Please try again.</p>
+        @if (Model.ShowRequestId)
+        {
+            <p class="small text-muted">Request ID: <code>@Model.RequestId</code></p>
+        }
+        <a class="btn btn-leaf btn-pill" asp-controller="Home" asp-action="Index">Take me home</a>
+    </div>
+</div>

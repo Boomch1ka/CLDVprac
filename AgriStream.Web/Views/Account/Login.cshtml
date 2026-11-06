@@ -1,0 +1,39 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Login";
+}
+<div class="auth-wrap">
+    <div class="card-fun top-leaf">
+        <div class="card-body p-4">
+            <h3 class="fw-bold text-success mb-1">User Login</h3>
+            <p class="text-muted small mb-3">Enter your AgriStream credentials (default admin: <code>admin</code> / <code>Admin@123</code>).</p>
+
+            <form asp-action="Login" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+                <input type="hidden" asp-for="ReturnUrl" />
+
+                <div class="mb-3">
+                    <label asp-for="Username" class="form-label fw-semibold"></label>
+                    <input asp-for="Username" class="form-control" placeholder="Username" autofocus />
+                    <span asp-validation-for="Username" class="text-danger small"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Password" class="form-label fw-semibold"></label>
+                    <input asp-for="Password" class="form-control" placeholder="Password" />
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+                <div class="form-check mb-3">
+                    <input asp-for="RememberMe" class="form-check-input" />
+                    <label asp-for="RememberMe" class="form-check-label"></label>
+                </div>
+                <button type="submit" class="btn btn-leaf w-100">Login</button>
+            </form>
+
+            <p class="text-center mt-3 mb-0 small">
+                Don't have an account? <a asp-action="Register">Register here</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

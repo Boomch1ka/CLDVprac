@@ -1,0 +1,12 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+local.settings.json
+appsettings.Development.json
+__azurite_db*
+__blobstorage__/
+__queuestorage__/
+TestResults/
+*.publishsettings

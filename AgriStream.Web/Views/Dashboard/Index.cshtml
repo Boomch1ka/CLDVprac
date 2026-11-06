@@ -1,0 +1,193 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    var latest = Model.Snapshot.Latest;
+    var devicesById = Model.Devices.ToDictionary(d => d.DeviceId, d => d);
+}
+
+<div class="page-header">
+    <div>
+        <h1>Field Dashboard 🌾</h1>
+        <p>Hey @User.Identity?.Name, here's what your sensors reported in the last 24 hours.</p>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="source-chip @(Model.FromFunction ? "" : "fallback")" title="Where this data came from">
+            <span class="dot"></span> @Model.DataSource
+        </span>
+        <form asp-action="Simulate" method="post" class="d-inline">
+            <button type="submit" class="btn btn-sun btn-pill" data-loading="Sending..."><i class="bi bi-broadcast"></i> Simulate sensor burst</button>
+        </form>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.Warning))
+{
+    <div class="alert alert-warning border-0 rounded-4 fw-semibold"><i class="bi bi-info-circle"></i> @Model.Warning</div>
+}
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card grad-leaf">
+            <div class="stat-label">Avg soil moisture</div>
+            <div class="stat-value">@Model.AvgMoisture%</div>
+            <i class="bi bi-moisture stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card grad-sun">
+            <div class="stat-label">Avg air temp</div>
+            <div class="stat-value">@Model.AvgAirTemperature°C</div>
+            <i class="bi bi-thermometer-sun stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card grad-sky">
+            <div class="stat-label">Avg humidity</div>
+            <div class="stat-value">@Model.AvgHumidity%</div>
+            <i class="bi bi-cloud-drizzle stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card grad-berry">
+            <div class="stat-label">Sensors reporting</div>
+            <div class="stat-value">@latest.Count <small class="fs-6">/ @Model.Devices.Count</small></div>
+            <i class="bi bi-broadcast-pin stat-icon"></i>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-5">
+        <div class="card-fun h-100"><div class="card-body">
+            <h5 class="mb-3">💧 Moisture by sensor</h5>
+            @if (latest.Count == 0)
+            {
+                <div class="empty-state"><span class="emoji">🌵</span>No readings yet. Hit <b>Simulate sensor burst</b>!</div>
+            }
+            else
+            {
+                <canvas id="moistureChart" height="260"></canvas>
+            }
+        </div></div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card-fun h-100"><div class="card-body">
+            <h5 class="mb-3">📈 Trends (30-min averages)</h5>
+            @if (Model.TrendLabels.Count == 0)
+            {
+                <div class="empty-state"><span class="emoji">📭</span>Trends show up once readings arrive.</div>
+            }
+            else
+            {
+                <canvas id="trendChart" height="260"></canvas>
+            }
+        </div></div>
+    </div>
+</div>
+
+<div class="card-fun">
+    <div class="card-body pb-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h5 class="mb-0">📡 Latest reading per sensor</h5>
+        <form method="get" class="d-flex gap-2 align-items-center">
+            <select name="deviceId" class="form-select form-select-sm" onchange="this.form.submit()"
+                    asp-items="@(new SelectList(Model.Devices.Select(d => new { d.DeviceId, Label = d.DeviceId + " · " + d.Name }), "DeviceId", "Label", Model.SelectedDeviceId))">
+                <option value="">All sensors</option>
+            </select>
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-fun">
+            <thead>
+                <tr>
+                    <th>Sensor</th>
+                    <th style="min-width:180px">Soil moisture</th>
+                    <th>Soil °C</th>
+                    <th>Air °C</th>
+                    <th>Humidity</th>
+                    <th>pH</th>
+                    <th>Battery</th>
+                    <th>When</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (latest.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-center text-muted py-4">No telemetry yet 🌱</td></tr>
+                }
+                @foreach (var r in latest)
+                {
+                    var mood = DisplayHelpers.MoistureMood(r.SoilMoisture);
+                    devicesById.TryGetValue(r.DeviceId, out var dev);
+                    <tr>
+                        <td>
+                            <div class="fw-bold">@r.DeviceId</div>
+                            <div class="small text-muted">@(dev?.FieldName ?? "")</div>
+                        </td>
+                        <td>
+                            <div class="d-flex justify-content-between small mb-1">
+                                <span class="fw-bold">@r.SoilMoisture.ToString("0.0")%</span>
+                                <span class="mood mood-@mood.Css">@mood.Emoji @mood.Label</span>
+                            </div>
+                            <div class="moisture-bar moisture-@mood.Css"><span style="width:@(Math.Clamp(r.SoilMoisture, 0, 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture))%"></span></div>
+                        </td>
+                        <td>@r.SoilTemperature.ToString("0.0")</td>
+                        <td>@r.AirTemperature.ToString("0.0")</td>
+                        <td>@r.Humidity.ToString("0")%</td>
+                        <td>@r.Ph.ToString("0.0")</td>
+                        <td>
+                            <i class="bi @(r.BatteryLevel < 20 ? "bi-battery text-danger" : r.BatteryLevel < 60 ? "bi-battery-half text-warning" : "bi-battery-full text-success")"></i>
+                            @r.BatteryLevel.ToString("0")%
+                        </td>
+                        <td class="text-muted">@r.RecordedAt.TimeAgo()</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script>
+        Chart.defaults.font.family = 'Nunito, sans-serif';
+        Chart.defaults.font.weight = 700;
+        Chart.defaults.color = '#6b7280';
+
+        const latest = @Json.Serialize(latest.Select(r => new { r.DeviceId, r.SoilMoisture }));
+        const moistureEl = document.getElementById('moistureChart');
+        if (moistureEl) {
+            const colours = latest.map(r => r.soilMoisture < 25 ? '#fb7185' : r.soilMoisture > 65 ? '#818cf8' : '#4ade80');
+            new Chart(moistureEl, {
+                type: 'bar',
+                data: {
+                    labels: latest.map(r => r.deviceId),
+                    datasets: [{ label: 'Soil moisture %', data: latest.map(r => r.soilMoisture), backgroundColor: colours, borderRadius: 12, borderSkipped: false }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, max: 100, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
+                }
+            });
+        }
+
+        const trendEl = document.getElementById('trendChart');
+        if (trendEl) {
+            new Chart(trendEl, {
+                type: 'line',
+                data: {
+                    labels: @Json.Serialize(Model.TrendLabels),
+                    datasets: [
+                        { label: 'Moisture %', data: @Json.Serialize(Model.TrendMoisture), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,.15)', fill: true, tension: .4, borderWidth: 3, pointRadius: 3 },
+                        { label: 'Air °C', data: @Json.Serialize(Model.TrendTemperature), borderColor: '#f59e0b', tension: .4, borderWidth: 3, pointRadius: 3 },
+                        { label: 'Humidity %', data: @Json.Serialize(Model.TrendHumidity), borderColor: '#38bdf8', tension: .4, borderWidth: 3, pointRadius: 3, borderDash: [6, 4] }
+                    ]
+                },
+                options: {
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { labels: { usePointStyle: true } } },
+                    scales: { y: { grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } }
+                }
+            });
+        }
+    </script>
+}

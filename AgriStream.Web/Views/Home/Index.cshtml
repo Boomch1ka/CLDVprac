@@ -1,0 +1,110 @@
+@{
+    ViewData["Title"] = "Home";
+    var isAuth = User.Identity?.IsAuthenticated == true;
+}
+
+<div class="card-fun top-leaf mb-4">
+    <div class="card-body p-4">
+        <h2 class="fw-bold text-success mb-2">AgriStream IoT - Smart Farm Monitoring Portal</h2>
+        <p class="mb-3">
+            Welcome to the AgriStream IoT management web application. This system collects real-time soil sensor telemetry
+            in Azure Table Storage, stores aerial drone imagery in Azure Blob Storage, manages user accounts and roles in
+            Azure SQL Database, and processes data streams using four Azure Functions.
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+            @if (isAuth)
+            {
+                <a class="btn btn-leaf btn-pill" asp-controller="Dashboard" asp-action="Index">Go to Field Dashboard</a>
+                <a class="btn btn-sky btn-pill" asp-controller="Devices" asp-action="Index">Sensors & Irrigation</a>
+                <a class="btn btn-sun btn-pill" asp-controller="Drone" asp-action="Index">Upload Drone Images</a>
+            }
+            else
+            {
+                <a class="btn btn-leaf btn-pill" asp-controller="Account" asp-action="Login">Login to Portal</a>
+                <a class="btn btn-sun btn-pill" asp-controller="Account" asp-action="Register">Register New Account</a>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-lg-3">
+        <div class="card-fun top-leaf h-100">
+            <div class="card-body">
+                <h5 class="fw-bold text-success">1. Azure SQL Database</h5>
+                <p class="text-muted small mb-0">
+                    Stores user login credentials, system roles (<code>Farmer</code>, <code>Agronomist</code>, <code>Admin</code>), and the master sensor registry table.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card-fun top-sky h-100">
+            <div class="card-body">
+                <h5 class="fw-bold text-primary">2. Azure Blob Storage</h5>
+                <p class="text-muted small mb-0">
+                    Stores unstructured aerial drone photos uploaded from the web portal inside the <code>drone-images</code> container.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card-fun top-sun h-100">
+            <div class="card-body">
+                <h5 class="fw-bold text-warning-emphasis">3. Azure Table Storage</h5>
+                <p class="text-muted small mb-0">
+                    Stores high-frequency soil moisture and temperature readings in <code>Telemetry</code> plus audit logs in <code>UploadAudit</code> and <code>IrrigationEvents</code>.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card-fun top-berry h-100">
+            <div class="card-body">
+                <h5 class="fw-bold" style="color:#8e24aa">4. Azure Functions Pipeline</h5>
+                <p class="text-muted small mb-0">
+                    Uses a Blob Trigger, HTTP GET Trigger, HTTP POST Trigger, and Queue Trigger to process uploads, telemetry, and irrigation commands.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card-fun">
+    <div class="card-body">
+        <h5 class="fw-bold mb-3">Serverless Data Pipeline Summary</h5>
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Function Name</th>
+                        <th>Trigger Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>DroneImageAuditFunction</code></td>
+                        <td><span class="badge bg-info text-dark">Blob Trigger</span></td>
+                        <td>Triggered when a drone photo is uploaded to <code>drone-images</code>; writes an audit row into Azure Table Storage (<code>UploadAudit</code>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>GetLatestTelemetry</code></td>
+                        <td><span class="badge bg-success">HTTP GET</span></td>
+                        <td>Called by the MVC Dashboard to fetch the latest sensor readings from Azure Table Storage (<code>Telemetry</code>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>TriggerIrrigation</code></td>
+                        <td><span class="badge bg-warning text-dark">HTTP POST</span></td>
+                        <td>Called when a user clicks "Trigger Irrigation"; places an irrigation command message into the <code>irrigation-commands</code> Queue.</td>
+                    </tr>
+                    <tr>
+                        <td><code>ProcessIrrigationCommand</code></td>
+                        <td><span class="badge bg-primary">Queue Trigger</span></td>
+                        <td>Reads from the <code>irrigation-commands</code> queue and updates the sensor's status to <code>Irrigating</code> in Azure SQL Database.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

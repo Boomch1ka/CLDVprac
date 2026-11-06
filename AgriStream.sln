@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgriStream.Web", "AgriStream.Web\AgriStream.Web.csproj", "{B4C13A94-8B41-4A12-8C2D-70A6727A4E01}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgriStream.Functions", "AgriStream.Functions\AgriStream.Functions.csproj", "{D9E24B85-9C52-4B23-9D3E-81B7838B5F02}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B4C13A94-8B41-4A12-8C2D-70A6727A4E01}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4C13A94-8B41-4A12-8C2D-70A6727A4E01}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4C13A94-8B41-4A12-8C2D-70A6727A4E01}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4C13A94-8B41-4A12-8C2D-70A6727A4E01}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D9E24B85-9C52-4B23-9D3E-81B7838B5F02}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D9E24B85-9C52-4B23-9D3E-81B7838B5F02}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D9E24B85-9C52-4B23-9D3E-81B7838B5F02}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D9E24B85-9C52-4B23-9D3E-81B7838B5F02}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
